@@ -8,6 +8,7 @@ PIDS_RE = re.compile(r"^\d+/\d+$")
 DATE_RE = re.compile(r"^\d{4}-\d\d-\d\d$")
 TIME_RE = re.compile(r"^\d\d:\d\d(:\d\d)?$")
 SK_RE = re.compile(r"(?i)\bsk\d{5,8}\b")
+CVE_RE = re.compile(r"(?i)\bCVE-\d{4}-\d{4,7}\b")
 
 
 def parse_system(raw: str) -> dict:
@@ -47,12 +48,18 @@ def parse_cplp_list(raw: str) -> dict:
         if s.upper().startswith("ID") and "STATUS" in s.upper():
             header = True
             continue
+        if s.lower().startswith("no recorded patches"):
+            continue                      # R82.20 on a host with nothing in the manifest
+        if s.startswith("*"):
+            continue                      # footnote: "* reports to the management audit trail ..."
         toks = s.split()
-        if (len(toks) < 2 or not re.fullmatch(r"[\w.+-]+:[\w.+-]+", toks[0])
+        if (len(toks) < 2 or not re.fullmatch(r"[\w.+-]+:[\w.+-]+\*?", toks[0])
                 or not re.fullmatch(r"[A-Za-z]+", toks[1])):
             unparsed.append(s)
             continue
         pid, status = toks[0], toks[1].lower()
+        audit = pid.endswith("*")         # '*' = reports to the management audit trail
+        pid = pid.rstrip("*")
         rest = toks[2:]
         mode = pids = installed = None
         if rest and not PIDS_RE.match(rest[0]) and not DATE_RE.match(rest[0]):
@@ -73,6 +80,8 @@ def parse_cplp_list(raw: str) -> dict:
             "pids": pids, "pids_applied": running, "pids_total": total,
             "installed": installed, "comment": comment,
             "sks": sorted({m.lower() for m in SK_RE.findall(comment)}),
+            "cves": sorted({m.upper() for m in CVE_RE.findall(comment)}),
+            "audit": audit,
         }
     return {"patches": patches, "unparsed": unparsed, "header": header}
 
@@ -97,26 +106,39 @@ def parse_bundles(raw: str) -> dict:
 
 
 def parse_au_component(raw: str) -> dict:
-    """AutoUpdater view of the CPLP component (urgent_security_updates).
+    """AutoUpdater view of the CPLP component, from 'autoupdatercli show urgent_security_updates'.
 
-    Takes the output of 'autoupdatercli show urgent_security_updates' plus the
-    component's line from products_config.xml. Exact wording varies by take, so
-    this looks for well-known words rather than a fixed layout."""
-    low = raw.lower()
+    R82.20 prints key: value lines:
+        download-scheduler-active: true      install-scheduler-active: true
+        download-action: idle                install-revert-action: idle
+        installation-date: 2026-10-01_16:25:59
+        package-version: 29
+        package-name: urgent_security_updates_R82_20_Bundle_T29_FULL.tgz
+        package-installed: true
+    plus the component's line from products_config.xml. 'state' is enabled when the
+    download and install schedulers are both active, disabled when both are off."""
+    kv = {}
+    for line in raw.replace("\r", "").split("\n"):
+        m = re.match(r"^\s*([a-z][\w-]*)\s*:\s*(.*?)\s*$", line, re.I)
+        if m:
+            kv.setdefault(m.group(1).lower(), m.group(2))
+
+    def flag(key):
+        v = (kv.get(key) or "").lower()
+        return True if v == "true" else False if v == "false" else None
+
+    dl, inst = flag("download-scheduler-active"), flag("install-scheduler-active")
     state = None
-    if re.search(r"\bdisabled\b|enabled\s*[:=]\s*(false|no|0)\b|is disabled", low):
-        state = "disabled"
-    elif re.search(r"\benabled\b|enabled\s*[:=]\s*(true|yes|1)\b", low):
-        state = "enabled"
-    ver = None
-    m = re.search(r'(?i)name="urgent_security_updates"[^>]*?\bversion="([^"]+)"', raw)
-    if m:
-        ver = m.group(1)
-    else:
-        m = re.search(r"(?i)package-version\s*:\s*(\S+)", raw)
+    if dl is not None or inst is not None:
+        state = "enabled" if (dl and inst) else "disabled" if (dl is False and inst is False) else "partial"
+    ver = kv.get("package-version")
+    if ver is None:
+        m = re.search(r'(?i)name="urgent_security_updates"[^>]*?\bversion="([^"]+)"', raw)
         ver = m.group(1) if m else None
-    present = "urgent_security_updates" in low
-    return {"state": state, "version": ver, "listed": present}
+    return {"state": state, "version": ver, "package": kv.get("package-name"),
+            "installed": flag("package-installed"), "installed_at": kv.get("installation-date"),
+            "download_action": kv.get("download-action"), "install_action": kv.get("install-revert-action"),
+            "listed": "urgent_security_updates" in raw.lower()}
 
 
 CONSENT_NAMES = {

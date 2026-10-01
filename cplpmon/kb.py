@@ -55,7 +55,7 @@ def assess(snap):
     out = {"version": None, "take": None, "latest_take": None, "behind": None,
            "release": None, "jumbo_take": None, "cplp_present": None,
            "counts": {}, "patches": {}, "coverage": {}, "alerts": [],
-           "au_state": None, "consent_dl_security": None}
+           "au_state": None, "au_version": None, "consent_dl_security": None}
     if not snap:
         return out
     system = _sec(snap, "system") or {}
@@ -83,7 +83,9 @@ def assess(snap):
     # CVE coverage, by the SKs listed in the COMMENT column
     for item in cve_items():
         sk = item["sk"].lower()
-        hits = [p["status"] for p in patches.values() if sk in p["sks"]]
+        cve = item["cve"].upper()
+        # R82.20 puts the CVE id in the COMMENT column, older output used the SK number
+        hits = [p["status"] for p in patches.values() if sk in p["sks"] or cve in p.get("cves", [])]
         if out["cplp_present"] is False:
             state = "no_cplp"
         elif hits and "reverted" in hits and ("armed" in hits or "ready" in hits):
@@ -102,6 +104,7 @@ def assess(snap):
         out["coverage"][item["cve"]] = state
 
     out["au_state"] = au.get("state")
+    out["au_version"] = au.get("version")
     eff = consent.get("effective") or {}
     db = consent.get("gaia_db") or {}
     out["consent_dl_security"] = eff.get("Download Security") or db.get("Download Security")

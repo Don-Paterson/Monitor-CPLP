@@ -239,7 +239,7 @@ function renderHosts() {
       || (h.cplp_present === false ? badge('alert', 'cplp not available') : '<span class="sub">no patches listed</span>');
     const rel = h.release ? `Patch ${h.release.patch} (${h.release.date})` : '—';
     const dl = h.consent_dl_security == null ? '—' : badge(h.consent_dl_security === 'true' ? 'ok' : 'warn', h.consent_dl_security === 'true' ? 'on' : 'off');
-    const au = h.au_state == null ? '<span class="sub">unknown</span>' : badge(h.au_state === 'enabled' ? 'ok' : 'warn', h.au_state);
+    const au = h.au_state == null ? '<span class="sub">unknown</span>' : badge(h.au_state === 'enabled' ? 'ok' : 'warn', h.au_state) + (h.au_version ? ' <span class="sub">T' + esc(h.au_version) + '</span>' : '');
     return `<div class="card ${worst}">
       <div class="card-head">
         <div><div class="card-title">${esc(h.name)}</div>
@@ -273,7 +273,7 @@ function renderMatrix() {
   if (!ids.length) { t.innerHTML = '<tr><td class="empty">No live patches reported yet.</td></tr>'; return; }
   t.innerHTML = `<thead><tr><th>Patch : process</th>${hosts.map(h => `<th>${esc(h.name)}</th>`).join('')}<th>Covers</th></tr></thead><tbody>` +
     ids.map(id => {
-      const sks = [...new Set(hosts.flatMap(h => (h.patches[id]?.sks) || []))];
+      const sks = [...new Set(hosts.flatMap(h => [...((h.patches[id]?.sks) || []), ...((h.patches[id]?.cves) || [])]))];
       return `<tr><td class="rowhead">${esc(id)}</td>` + hosts.map(h => {
         const p = h.patches[id];
         if (!p) return `<td class="cell"><span class="sub">—</span></td>`;

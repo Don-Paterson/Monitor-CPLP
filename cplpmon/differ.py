@@ -107,9 +107,10 @@ def diff_snapshots(old: dict, new: dict) -> list:
                                   "PIDS = patched / running processes"))
             if x["installed"] != y["installed"]:
                 events.append(_ev("cplp_list", pid, "reinstalled", x["installed"], y["installed"], "info"))
-            if x["sks"] != y["sks"]:
-                events.append(_ev("cplp_list", pid, "coverage", " ".join(x["sks"]) or "-",
-                                  " ".join(y["sks"]) or "-", "ok" if len(y["sks"]) > len(x["sks"]) else "warn"))
+            rx, ry = x["sks"] + x.get("cves", []), y["sks"] + y.get("cves", [])
+            if rx != ry:
+                events.append(_ev("cplp_list", pid, "coverage", " ".join(rx) or "-",
+                                  " ".join(ry) or "-", "ok" if len(ry) > len(rx) else "warn"))
 
     # AutoUpdater CPLP component
     a, b = _sec(old, "au_component"), _sec(new, "au_component")
@@ -117,7 +118,7 @@ def diff_snapshots(old: dict, new: dict) -> list:
         for key, label in (("state", "urgent_security_updates state"), ("version", "urgent_security_updates version")):
             va, vb = a["data"].get(key), b["data"].get(key)
             if va != vb and (va or vb):
-                sev = "warn" if (key == "state" and vb == "disabled") else "info"
+                sev = "warn" if (key == "state" and vb in ("disabled", "partial")) else "info"
                 events.append(_ev("au_component", label, "changed", va, vb, sev))
 
     # Consent flags - Download Security is what delivers CPLP
