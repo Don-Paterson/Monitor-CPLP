@@ -9,6 +9,7 @@ Each event carries a severity: alert (patch reverted / lost), warn, info.
 CATEGORY = {
     "system": "Version",
     "cplp_list": "Live Patch",
+    "coverage": "CPLP coverage",
     "bundles": "CPLP bundle",
     "au_component": "AutoUpdater",
     "consent": "Consent flags",
@@ -111,6 +112,16 @@ def diff_snapshots(old: dict, new: dict) -> list:
             if rx != ry:
                 events.append(_ev("cplp_list", pid, "coverage", " ".join(rx) or "-",
                                   " ".join(ry) or "-", "ok" if len(ry) > len(rx) else "warn"))
+
+    # cplp coverage: patched / not patched per CVE
+    a, b = _sec(old, "coverage"), _sec(new, "coverage")
+    if a and b:
+        ia, ib = a["data"].get("items", {}), b["data"].get("items", {})
+        for k in sorted(set(ia) | set(ib)):
+            if ia.get(k) != ib.get(k):
+                sev = "ok" if ib.get(k) == "patched" else "alert" if ia.get(k) == "patched" else "info"
+                events.append(_ev("coverage", k, "changed" if k in ia and k in ib else "added" if k in ib else "removed",
+                                  ia.get(k), ib.get(k), sev))
 
     # AutoUpdater CPLP component
     a, b = _sec(old, "au_component"), _sec(new, "au_component")

@@ -28,7 +28,7 @@ FAKE_BIN = {
     "cpvinfo": 'echo "This is Check Point VPN-1(TM) & FireWall-1(R) R82.10 - Build 88"',
     "dbget": 'grep "^$1 " "$STATE/consent_db.txt" | cut -d" " -f2',
     # CPLP: missing state file = CPLP not installed -> bash 'command not found' (rc 127)
-    "cplp": '[ -f "$STATE/cplp_list.txt" ] || { echo "bash: cplp: command not found" >&2; exit 127; }; cat "$STATE/cplp_list.txt"',
+    "cplp": '[ -f "$STATE/cplp_list.txt" ] || { echo "bash: cplp: command not found" >&2; exit 127; }; case "$1" in coverage) if grep -q "CVE-" "$STATE/cplp_list.txt"; then grep -o "CVE-[0-9]*-[0-9]*" "$STATE/cplp_list.txt" | sort -u | sed "s/$/  patched/"; else echo "(no tracked SK/CVE)"; fi ;; *) cat "$STATE/cplp_list.txt" ;; esac',
     "clish": (
         'case "$2" in\n'
         '  *"status build"*) cat "$STATE/da.txt" ;;\n'

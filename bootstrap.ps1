@@ -2,7 +2,7 @@
 .SYNOPSIS
     Monitor-CPLP bootstrap
     Installs Python (if needed) + Flask + Paramiko on A-GUI, downloads the tool,
-    shows a menu to pick the lab (CCTE / CCSE-ElasticXL / CTPS / custom) and the
+    shows a menu to pick the lab (CCSE / CCSE-ElasticXL / CTPS / custom) and the
     machines to watch, then starts the dashboard that tracks Check Point Live Patch
     (CPLP, sk185114): 'cplp list' status per patch, the URGENT bundle take vs the
     latest in the SK, CVE coverage and the AutoUpdater / consent settings behind it.
@@ -181,7 +181,7 @@ Write-Host "  Folder    : $INSTALL_DIR" -ForegroundColor White
 Write-Host "  Change log: $INSTALL_DIR\logs\<lab>\changes.log" -ForegroundColor White
 Write-Host "  One-off   : `"$PY`" $INSTALL_DIR\server.py --once" -ForegroundColor White
 Write-Host ""
-Write-Host "  Labs      : CCTE, CCSE-ElasticXL, CTPS + your own in labs.local.json" -ForegroundColor White
+Write-Host "  Labs      : CCSE, CCSE-ElasticXL, CTPS + your own in labs.local.json" -ForegroundColor White
 Write-Host "  CPLP KB   : $INSTALL_DIR\cplp_kb.json (sk185114 - refreshed on every bootstrap run)" -ForegroundColor White
 Write-Host "  Skip menu : `"$PY`" $INSTALL_DIR\server.py --last" -ForegroundColor White
 Write-Host ""

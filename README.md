@@ -24,7 +24,7 @@ Nothing is changed on the Check Point hosts. Collection is read-only, and Clish 
 
 This works exactly as in Monitor-AutoUpdater. Every known lab IP is probed on tcp/22, and each lab is listed with the number of machines that answer, the best match marked **detected**. You then tick machines with `2 4` / `A` / `R` / `N` / `D` / `+ NAME IP [role]` / `P` / `B`, and Enter starts. The choice is saved, so Enter at both menus repeats it.
 
-Shipped labs are in `labs.json` (CCTE, CCSE-ElasticXL, CTPS). Your own go in `labs.local.json`, which the bootstrap never overwrites. To skip the menu, use `--last`, `--lab ccte --hosts A-SMS,A-GW-01`, or `--list-labs`.
+Shipped labs are in `labs.json` (CCSE, CCSE-ElasticXL, CTPS). Your own go in `labs.local.json`, which the bootstrap never overwrites. To skip the menu, use `--last`, `--lab ccte --hosts A-SMS,A-GW-01`, or `--list-labs`.
 
 ## What is collected (expert mode, per poll)
 

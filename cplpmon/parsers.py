@@ -141,6 +141,23 @@ def parse_au_component(raw: str) -> dict:
             "listed": "urgent_security_updates" in raw.lower()}
 
 
+def parse_coverage(raw: str) -> dict:
+    """'cplp coverage' (R82.20): one '<CVE or SK>  <state>' line per tracked item, e.g.
+        CVE-2026-91843  patched
+    or '(no tracked SK/CVE)' when nothing applies to this machine."""
+    items, unparsed = {}, []
+    for line in raw.replace("\r", "").split("\n"):
+        s = line.strip()
+        if not s or s.lower().startswith("rc="):
+            continue
+        m = re.match(r"^((?:CVE-\d{4}-\d{4,7})|(?:sk\d{5,8}))\s+(.+?)\s*$", s, re.I)
+        if m:
+            items[m.group(1).upper() if m.group(1).upper().startswith("CVE") else m.group(1).lower()] = m.group(2).lower()
+        elif not s.lower().startswith("(no tracked"):
+            unparsed.append(s)
+    return {"items": items, "none": "(no tracked" in raw.lower(), "unparsed": unparsed}
+
+
 CONSENT_NAMES = {
     "AllowReceivingDataFromCheckPoint": "Download Security",
     "AllowReceivingDataFromCheckPointNonSecurity": "Download Non-Security",

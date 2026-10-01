@@ -376,6 +376,14 @@ function renderTab(t) {
         <td class="item">${skLinks(p[id].comment || '')}</td></tr>`).join('') + '</tbody></table></div>'
       : '<div class="note">cplp list returned no patches.</div>';
     if ((s.data.unparsed || []).length) h += `<h3>Lines not recognised</h3><pre>${esc(s.data.unparsed.join('\n'))}</pre>`;
+    const cv = sec('coverage');
+    if (cv.ok && cv.data) {
+      const ci = Object.entries(cv.data.items || {});
+      h += '<h3>cplp coverage</h3>' + (ci.length
+        ? `<div class="table-wrap"><table><thead><tr><th>CVE / SK</th><th>State</th></tr></thead><tbody>` +
+          ci.map(([k, v]) => `<tr><td class="rowhead">${skLinks(k)}</td><td>${badge(v === 'patched' ? 'ok' : 'warn', v)}</td></tr>`).join('') + '</tbody></table></div>'
+        : '<div class="note">No tracked SK/CVE applies to this machine.</div>');
+    } else if (cv.error) h += `<h3>cplp coverage</h3><div class="note">Not available: ${esc(cv.error)}</div>`;
     return h;
   }
   if (t === 'drift') return `<div class="note">Everything that differs between the baseline (${esc(localTime(hostData.baseline_at))}) and the latest good poll. Use Re-baseline to start counting from now, e.g. at the start of a class.</div>` + eventTable(hostData.drift, false);

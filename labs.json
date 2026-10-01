@@ -3,7 +3,7 @@
     "labs": [
         {
             "id": "ccte",
-            "name": "CCTE",
+            "name": "CCSE",
             "description": "A-GW-Cluster (A-GW-01/02), A-SMS, A-SMS-02, A-SME, B-GW",
             "hosts": [
                 { "name": "A-SMS",    "ips": ["10.1.1.101"], "role": "Management",        "default": true },

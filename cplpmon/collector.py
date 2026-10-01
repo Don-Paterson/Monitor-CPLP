@@ -33,6 +33,10 @@ COMMANDS = {
         "cplp list",
         "Live Patches (cplp list)",
     ),
+    "coverage": (
+        "cplp coverage 2>&1",
+        "CPLP coverage by CVE/SK (cplp coverage)",
+    ),
     "bundles": (
         "cpinfo -y all 2>/dev/null | egrep -i 'URGENT|JUMBO'",
         "CPLP bundle + Jumbo take (cpinfo -y all | egrep URGENT|JUMBO)",
@@ -72,6 +76,8 @@ def _parse(section, raw, settings):
         return parsers.parse_system(raw)
     if section == "cplp_list":
         return parsers.parse_cplp_list(raw)
+    if section == "coverage":
+        return parsers.parse_coverage(raw)
     if section == "bundles":
         return parsers.parse_bundles(raw)
     if section == "au_component":
@@ -126,7 +132,7 @@ def collect_host(host_cfg: dict, creds: dict, settings: dict) -> dict:
                             sec["error"] = ("cplp not found - CPLP not installed?"
                                             if r["rc"] == 127 or "not found" in raw.lower()
                                             else f"exit code {r['rc']}")
-                    elif r["rc"] not in (0, None) and not sec["data"]:
+                    elif r["rc"] not in (0, None) and (section == "coverage" or not sec["data"]):
                         sec["ok"] = False
                         sec["error"] = f"exit code {r['rc']}"
                 snap["sections"][section] = sec
