@@ -1,0 +1,39 @@
+{
+    "_comment": "Lab profiles for the start-up menu. Put your own labs in labs.local.json (same format) - that file is never overwritten by the bootstrap. 'default': selected unless you change it. 'ips': tried in order, first one answering on SSH is used.",
+    "labs": [
+        {
+            "id": "ccte",
+            "name": "CCTE",
+            "description": "A-GW-Cluster (A-GW-01/02), A-SMS, A-SMS-02, A-SME, B-GW",
+            "hosts": [
+                { "name": "A-SMS",    "ips": ["10.1.1.101"], "role": "Management",        "default": true },
+                { "name": "A-SMS-02", "ips": ["10.1.1.111"], "role": "Management",        "default": false },
+                { "name": "A-SME",    "ips": ["10.1.1.130"], "role": "SmartEvent",        "default": false },
+                { "name": "A-GW-01",  "ips": ["10.1.1.2"],   "role": "Cluster member",    "default": true },
+                { "name": "A-GW-02",  "ips": ["10.1.1.3"],   "role": "Cluster member",    "default": true },
+                { "name": "B-GW",     "ips": ["198.51.100.1", "192.168.21.1"], "role": "Gateway (Bravo)", "default": false }
+            ]
+        },
+        {
+            "id": "ccse-elasticxl",
+            "name": "CCSE - ElasticXL",
+            "description": "A-Elastic-Cluster (SMO on 10.1.1.1), A-SMS, A-SMS-02, A-SME, B-GW",
+            "hosts": [
+                { "name": "A-SMS",      "ips": ["10.1.1.101"], "role": "Management",  "default": true },
+                { "name": "A-SMS-02",   "ips": ["10.1.1.111"], "role": "Management",  "default": false },
+                { "name": "A-SME",      "ips": ["10.1.1.130"], "role": "SmartEvent",  "default": false },
+                { "name": "A-ElasticXL","ips": ["10.1.1.1"],   "role": "ElasticXL SMO", "default": true },
+                { "name": "B-GW",       "ips": ["198.51.100.1", "192.168.21.1"], "role": "Gateway (Bravo)", "default": false }
+            ]
+        },
+        {
+            "id": "ctps",
+            "name": "CTPS",
+            "description": "A-GW, A-SMS",
+            "hosts": [
+                { "name": "A-SMS", "ips": ["10.1.1.101"], "role": "Management", "default": true },
+                { "name": "A-GW",  "ips": ["10.1.1.1"],   "role": "Gateway",    "default": true }
+            ]
+        }
+    ]
+}

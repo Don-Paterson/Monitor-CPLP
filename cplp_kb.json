@@ -1,0 +1,58 @@
+{
+    "_comment": "CPLP knowledge base from sk185114 (Last Modified 2026-09-29). Update this file when the SK changes - the bootstrap re-downloads it on every run. Takes refer to BUNDLE_URGENT_SECURITY_UPDATE_<ver>_AUTOUPDATE in 'cpinfo -y all'.",
+    "sk_revision": "2026-09-29",
+    "latest_take": {
+        "R82.20": 29,
+        "R82.10": 28,
+        "R82": 28,
+        "R81.20": 28
+    },
+    "releases": [
+        {
+            "patch": 5, "takes": [28, 29], "date": "2026-09-16",
+            "items": [
+                {"cve": "CVE-2026-91843", "sk": "sk1000155", "title": "Stack overflow in login process to the Security Management and Log Servers"}
+            ],
+            "notes": ["Added support for R82.20"]
+        },
+        {
+            "patch": 4, "takes": [26], "date": "2026-09-14",
+            "items": [
+                {"cve": "CVE-2026-85102", "sk": "sk1000117", "title": "Update - enhanced coverage for rare scenarios (R82.10 JHF T24-, R82 JHF T107-, R81.20 JHF T146-)"}
+            ],
+            "notes": []
+        },
+        {
+            "patch": 3, "takes": [24], "date": "2026-09-09",
+            "items": [
+                {"cve": "CVE-2026-85102", "sk": "sk1000117", "title": "Authentication Bypass and RCE in Remote Access and Site-to-Site VPN"},
+                {"cve": "CVE-2026-85103", "sk": "sk1000118", "title": "ASN.1 decoding heap overflow leading to RCE"}
+            ],
+            "notes": ["CLI modification", "Audit log support"]
+        },
+        {
+            "patch": 2, "takes": [17, 18], "date": "2026-07-26",
+            "items": [
+                {"cve": "CVE-2026-16232", "sk": "sk185169", "title": "Authentication bypass with SmartConsole login process using application token"},
+                {"cve": "CVE-2026-62144", "sk": "sk185152", "title": "Management Authentication Bypass and Privilege Escalation"}
+            ],
+            "notes": ["Management servers supported", "Improved 'cplp list' output"]
+        },
+        {
+            "patch": 1, "takes": [9, 10], "date": "2026-07-08",
+            "items": [
+                {"cve": "CVE-2026-50751", "sk": "sk185033", "title": "User Authentication bypass on VPN Remote Access / Mobile Access in deprecated IKEv1"}
+            ],
+            "notes": ["Initial release of CPLP"]
+        }
+    ],
+    "statuses": {
+        "armed":    {"rank": 0, "level": "ok",    "text": "Active in the running process - fix in effect"},
+        "ready":    {"rank": 1, "level": "info",  "text": "Installed, waiting - applied when the target process starts"},
+        "jumbofix": {"rank": 2, "level": "ok",    "text": "Installed Jumbo is newer - fix already included, patch not applied"},
+        "nolib":    {"rank": 3, "level": "muted", "text": "Target component not installed - nothing to patch"},
+        "nopatch":  {"rank": 4, "level": "muted", "text": "No patch for this version/platform"},
+        "unsupp":   {"rank": 5, "level": "warn",  "text": "Patch does not cover the installed build yet"},
+        "reverted": {"rank": 6, "level": "alert", "text": "Removed - no longer in effect (fail-open after crashes, or reverted)"}
+    }
+}

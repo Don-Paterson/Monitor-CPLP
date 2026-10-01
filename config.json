@@ -1,0 +1,16 @@
+{
+    "dashboard": {
+        "host": "127.0.0.1",
+        "port": 8091,
+        "open_browser": true,
+        "ui_refresh_seconds": 5
+    },
+    "collection": {
+        "interval_minutes": 15,
+        "command_timeout_seconds": 240,
+        "login_timeout_seconds": 90,
+        "parallel": true,
+        "log_tail_lines": 60,
+        "skip_sections": []
+    }
+}

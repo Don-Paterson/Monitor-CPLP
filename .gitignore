@@ -1,0 +1,7 @@
+credentials.json
+data/
+logs/
+__pycache__/
+*.pyc
+selection.json
+labs.local.json

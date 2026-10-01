@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor-CPLP</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0f1114; --surface: #1a1d23; --surface2: #22262e; --border: #2a2e37;
+  --text: #e4e6eb; --dim: #8b8f98; --label: #6b7080;
+  --green: #22c55e; --green-bg: rgba(34,197,94,.08); --green-b: rgba(34,197,94,.25);
+  --teal: #2dd4bf; --teal-bg: rgba(45,212,191,.08); --teal-b: rgba(45,212,191,.28);
+  --amber: #f59e0b; --amber-bg: rgba(245,158,11,.08); --amber-b: rgba(245,158,11,.25);
+  --red: #ef4444; --red-bg: rgba(239,68,68,.10); --red-b: rgba(239,68,68,.35);
+  --blue: #3b82f6; --blue-bg: rgba(59,130,246,.10); --blue-b: rgba(59,130,246,.3);
+  --grey: #6b7280; --grey-bg: rgba(107,114,128,.08); --grey-b: rgba(107,114,128,.25);
+  --accent: #a855f7;
+}
+body { font-family: 'Cascadia Code','SF Mono','Fira Code',Consolas,monospace; background: var(--bg);
+       color: var(--text); min-height: 100vh; padding: 24px; font-size: 13px; }
+a { color: #93c5fd; text-decoration: none; } a:hover { text-decoration: underline; }
+.header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+          margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.header h1 { font-size: 18px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; }
+.header h1 span { color: var(--accent); }
+.chip { font-size: 11px; font-weight: 600; letter-spacing: 1px; color: #d8b4fe; background: rgba(168,85,247,.1);
+        border: 1px solid rgba(168,85,247,.3); border-radius: 4px; padding: 3px 8px; margin-left: 10px; vertical-align: middle; }
+.chip:empty { display: none; }
+.meta { display: flex; gap: 16px; align-items: center; font-size: 11px; color: var(--dim); flex-wrap: wrap; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: var(--green); }
+.dot.busy { background: var(--amber); animation: pulse 1s ease-in-out infinite; }
+.dot.down { background: var(--red); }
+@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
+button, .btn { font-family: inherit; font-size: 11px; background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px; padding: 6px 12px; cursor: pointer; text-decoration: none; letter-spacing: .5px; }
+button:hover, .btn:hover { border-color: var(--dim); text-decoration: none; }
+button.primary { background: rgba(168,85,247,.12); border-color: rgba(168,85,247,.4); color: #e9d5ff; }
+button:disabled { opacity: .5; cursor: default; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; margin-bottom: 28px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px; }
+.card.alert { border-color: var(--red-b); } .card.warn { border-color: var(--amber-b); }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+.card-title { font-size: 14px; font-weight: 600; }
+.card-sub { font-size: 11px; color: var(--dim); margin-top: 3px; }
+.take { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.take .num { font-size: 26px; font-weight: 700; }
+.take .of { color: var(--dim); font-size: 12px; }
+.badge { display: inline-block; padding: 3px 7px; border-radius: 4px; font-size: 10px; font-weight: 600;
+         text-transform: uppercase; letter-spacing: .8px; border: 1px solid; white-space: nowrap; }
+.s-armed, .s-ok, .s-added, .s-uptodate, .s-available { background: var(--green-bg); color: var(--green); border-color: var(--green-b); }
+.s-jumbofix { background: var(--teal-bg); color: var(--teal); border-color: var(--teal-b); }
+.s-ready, .s-info, .s-collecting-i { background: var(--blue-bg); color: #93c5fd; border-color: var(--blue-b); }
+.s-reverted, .s-alert, .s-error, .s-removed, .s-failed, .s-no_cplp { background: var(--red-bg); color: #fca5a5; border-color: var(--red-b); }
+.s-unsupp, .s-partial, .s-warn, .s-behind, .s-not_delivered, .s-collecting, .s-changed, .s-status, .s-pids { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-b); }
+.s-nolib, .s-nopatch, .s-not_listed, .s-pending, .s-baseline, .s-muted, .s-reinstalled, .s-coverage { background: var(--grey-bg); color: #9ca3af; border-color: var(--grey-b); }
+.counts { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 10px; font-size: 12px; }
+.kv .k { color: var(--label); }
+.alerts { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.al { padding: 7px 10px; border-radius: 4px; font-size: 11px; border: 1px solid; word-break: break-word; }
+.al.alert { background: var(--red-bg); color: #fca5a5; border-color: var(--red-b); }
+.al.warn { background: var(--amber-bg); color: #fcd34d; border-color: var(--amber-b); }
+.err { margin-top: 12px; padding: 8px 10px; border-radius: 4px; background: var(--red-bg); color: #fca5a5;
+       border: 1px solid var(--red-b); font-size: 11px; word-break: break-word; }
+.card-foot { margin-top: 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.section-head { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 12px; flex-wrap: wrap; gap: 10px; }
+.section-head h2 { font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--dim); }
+.section-head .hint { font-size: 11px; color: var(--label); }
+.filters { display: flex; gap: 10px; align-items: center; font-size: 11px; color: var(--dim); flex-wrap: wrap; }
+select { font-family: inherit; font-size: 11px; background: var(--surface2); color: var(--text);
+         border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px; }
+.table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: auto; margin-bottom: 28px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { text-align: left; font-weight: 500; color: var(--label); font-size: 10px; text-transform: uppercase;
+     letter-spacing: 1px; padding: 10px 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); white-space: nowrap; }
+td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.item { word-break: break-word; } td.old { color: #fca5a5; word-break: break-word; } td.new { color: #86efac; word-break: break-word; }
+td.nowrap { white-space: nowrap; color: var(--dim); }
+td.cell { white-space: nowrap; } td.cell .pids { color: var(--dim); font-size: 11px; margin-left: 6px; }
+td.rowhead { white-space: nowrap; color: var(--text); }
+.sub { color: var(--dim); font-size: 11px; }
+tr.fresh { animation: flash 3s ease-out; }
+@keyframes flash { from { background: rgba(168,85,247,.22) } to { background: transparent } }
+.empty { padding: 22px; text-align: center; color: var(--dim); }
+.legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--dim); margin: -4px 0 12px; }
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; z-index: 10; }
+.overlay.open { display: block; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(1100px, 96vw); background: var(--bg);
+          border-left: 1px solid var(--border); z-index: 11; transform: translateX(100%); transition: transform .2s; display: flex; flex-direction: column; }
+.drawer.open { transform: none; }
+.drawer-head { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.tabs { display: flex; gap: 4px; padding: 10px 22px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.tab { padding: 8px 12px; font-size: 11px; color: var(--dim); cursor: pointer; border: 1px solid transparent; border-bottom: none; border-radius: 4px 4px 0 0; }
+.tab.active { color: var(--text); background: var(--surface); border-color: var(--border); }
+.drawer-body { padding: 18px 22px; overflow: auto; flex: 1; }
+pre { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px;
+      font-size: 11px; white-space: pre-wrap; word-break: break-word; color: #cbd5e1; margin-bottom: 16px; }
+h3 { font-size: 11px; color: var(--label); text-transform: uppercase; letter-spacing: 1px; margin: 4px 0 8px; }
+.note { color: var(--dim); font-size: 11px; margin-bottom: 12px; line-height: 1.5; }
+@media (max-width: 640px) { body { padding: 14px; } .kv { grid-template-columns: 120px 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Monitor-<span>CPLP</span> <small id="lab-name" class="chip"></small></h1>
+  <div class="meta">
+    <span id="poll-state"><span class="dot"></span>idle</span>
+    <span id="last-cycle">Last cycle: —</span>
+    <span id="next-run">Next: —</span>
+    <span id="kb-rev"></span>
+    <button class="primary" id="btn-collect" onclick="collectNow()">Collect now</button>
+    <a class="btn" href="/api/status.csv">Status CSV</a>
+    <a class="btn" href="/api/changes.csv">Changes CSV</a>
+  </div>
+</div>
+
+<div class="grid" id="hosts"></div>
+
+<div class="section-head">
+  <h2>Live patches</h2>
+  <span class="hint">cplp list on each machine · PIDS = patched / running processes</span>
+</div>
+<div class="legend" id="legend"></div>
+<div class="table-wrap"><table id="matrix"></table></div>
+
+<div class="section-head">
+  <h2>CVE coverage</h2>
+  <span class="hint">from sk185114, matched by the SK numbers in the cplp COMMENT column</span>
+</div>
+<div class="table-wrap"><table id="coverage"></table></div>
+
+<div class="section-head">
+  <h2>Change log</h2>
+  <div class="filters">
+    <label>Host <select id="f-host" onchange="renderChanges()"><option value="">All</option></select></label>
+    <label>Severity <select id="f-sev" onchange="renderChanges()">
+      <option value="">All</option><option value="alert">Alert</option><option value="warn">Warn+</option></select></label>
+    <label><input type="checkbox" id="f-base" onchange="renderChanges()"> show baseline events</label>
+  </div>
+</div>
+<div class="table-wrap" style="max-height: 60vh;">
+  <table>
+    <thead><tr><th>Time</th><th>Host</th><th>Sev</th><th>Category</th><th>Change</th><th>Item</th><th>Old</th><th>New</th></tr></thead>
+    <tbody id="changes"></tbody>
+  </table>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div><div class="card-title" id="d-title"></div><div class="card-sub" id="d-sub"></div></div>
+    <div style="display:flex; gap:8px;">
+      <button onclick="rebaseline()" title="Make the latest good snapshot the new baseline">Re-baseline</button>
+      <button onclick="closeDrawer()">Close</button>
+    </div>
+  </div>
+  <div class="tabs" id="d-tabs"></div>
+  <div class="drawer-body" id="d-body"></div>
+</div>
+
+<script>
+let STATE = null, lastGen = -1, knownKeys = null, openHost = null, hostData = null, activeTab = 'patches';
+let refreshMs = 5000, timer = null;
+const SK_URL = sk => `https://support.checkpoint.com/results/sk/${sk}`;
+const STATUS_ORDER = ['armed','jumbofix','ready','unsupp','reverted','nolib','nopatch'];
+const COVER_TEXT = {armed: 'armed', jumbofix: 'in Jumbo', ready: 'ready', reverted: 'REVERTED', unsupp: 'unsupp',
+                    nolib: 'nolib', nopatch: 'nopatch', not_delivered: 'take too old', not_listed: 'not listed',
+                    partial: 'partial', no_cplp: 'no CPLP'};
+const COVER_TIP = {armed: 'A patch listing this SK is armed', jumbofix: 'Fix included in the installed Jumbo',
+  ready: 'Patch installed, waiting for the target process', reverted: 'Patch for this SK was reverted',
+  partial: 'Armed on some processes, REVERTED on others', not_delivered: 'Installed CPLP take predates the patch for this CVE',
+  not_listed: 'No cplp entry names this SK - may not apply to this machine role, or covered by Jumbo',
+  no_cplp: 'cplp is not available on this machine'};
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const badge = (cls, text, title) => `<span class="badge s-${esc(cls)}"${title ? ` title="${esc(title)}"` : ''}>${esc(text ?? cls)}</span>`;
+const evKey = e => [e.ts, e.host, e.section, e.item, e.change].join('|');
+const skLinks = txt => esc(txt).replace(/\b(sk\d{5,8})\b/gi, m => `<a href="${SK_URL(m.toLowerCase())}" target="_blank" rel="noopener">${m}</a>`);
+
+function ago(iso) {
+  if (!iso) return '—';
+  const t = new Date(iso.endsWith('Z') ? iso : iso.replace(' ', 'T'));
+  const s = Math.round((Date.now() - t.getTime()) / 1000);
+  if (isNaN(s)) return iso;
+  if (s < 60) return `${s}s ago`; if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ${Math.floor(s % 3600 / 60)}m ago`;
+  return t.toLocaleString();
+}
+const localTime = iso => iso ? new Date(iso).toLocaleString() : '—';
+
+async function refresh() {
+  try {
+    const r = await fetch('/api/state', {cache: 'no-store'});
+    STATE = await r.json();
+    STATE.offset = STATE.server_time - Date.now() / 1000;
+    document.querySelector('#lab-name').textContent = STATE.lab ? STATE.lab.name : '';
+    document.querySelector('#kb-rev').textContent = `KB: sk185114 ${STATE.kb.sk_revision || ''}`;
+    document.querySelector('#poll-state').innerHTML = STATE.collecting
+      ? '<span class="dot busy"></span>collecting…' : '<span class="dot"></span>idle';
+    document.querySelector('#btn-collect').disabled = STATE.collecting;
+    document.querySelector('#last-cycle').textContent = 'Last cycle: ' + (STATE.last_cycle || '—');
+    updateNext();
+    const nr = (STATE.ui_refresh_seconds || 5) * 1000;
+    if (nr !== refreshMs) { refreshMs = nr; clearInterval(timer); timer = setInterval(refresh, refreshMs); }
+    renderHosts();
+    if (STATE.generation !== lastGen) {
+      lastGen = STATE.generation;
+      renderMatrix(); renderCoverage(); renderFilters(); renderChanges();
+      if (openHost) loadHost(openHost);
+    }
+    setTitle();
+  } catch (e) {
+    document.querySelector('#poll-state').innerHTML = '<span class="dot down"></span>dashboard offline';
+  }
+}
+let newCount = 0;
+function setTitle() {
+  const alerts = STATE.hosts.reduce((n, h) => n + h.alerts.filter(a => a.level === 'alert').length, 0);
+  document.title = `${newCount ? '(' + newCount + ' new) ' : ''}${alerts ? '⚠ ' : ''}Monitor-CPLP${STATE.lab ? ' - ' + STATE.lab.name : ''}`;
+}
+window.addEventListener('focus', () => { newCount = 0; if (STATE) setTitle(); });
+
+function updateNext() {
+  if (!STATE || !STATE.next_run || STATE.collecting) { document.querySelector('#next-run').textContent = 'Next: —'; return; }
+  const s = Math.max(0, Math.round(STATE.next_run - (Date.now() / 1000 + STATE.offset)));
+  document.querySelector('#next-run').textContent = `Next: ${Math.floor(s / 60)}m ${s % 60}s (every ${STATE.interval_minutes}m)`;
+}
+
+function renderHosts() {
+  document.querySelector('#hosts').innerHTML = STATE.hosts.map(h => {
+    const st = h.state || 'pending';
+    const worst = h.alerts.some(a => a.level === 'alert') ? 'alert' : (h.alerts.length ? 'warn' : '');
+    const takeBadge = h.take == null ? badge('muted', 'no bundle')
+      : h.behind ? badge('behind', 'behind') : (h.latest_take != null ? badge('uptodate', 'up to date') : '');
+    const counts = STATUS_ORDER.filter(s => h.counts[s]).map(s => badge(s, `${h.counts[s]} ${s}`, STATE.kb.statuses[s]?.text)).join('')
+      || (h.cplp_present === false ? badge('alert', 'cplp not available') : '<span class="sub">no patches listed</span>');
+    const rel = h.release ? `Patch ${h.release.patch} (${h.release.date})` : '—';
+    const dl = h.consent_dl_security == null ? '—' : badge(h.consent_dl_security === 'true' ? 'ok' : 'warn', h.consent_dl_security === 'true' ? 'on' : 'off');
+    const au = h.au_state == null ? '<span class="sub">unknown</span>' : badge(h.au_state === 'enabled' ? 'ok' : 'warn', h.au_state);
+    return `<div class="card ${worst}">
+      <div class="card-head">
+        <div><div class="card-title">${esc(h.name)}</div>
+          <div class="card-sub">${esc(h.ip)} · ${esc(h.role)}${h.version ? ' · ' + esc(h.version) : ''}${h.hostname && h.hostname !== h.name ? ' · ' + esc(h.hostname) : ''}</div></div>
+        ${badge(st === 'ok' ? 'ok' : st === 'error' ? 'error' : st === 'collecting' ? 'collecting' : 'pending', st)}
+      </div>
+      <div class="take"><span class="sub">CPLP take</span><span class="num">${h.take ?? '—'}</span>
+        <span class="of">${h.latest_take != null ? 'latest ' + h.latest_take : ''}</span>${takeBadge}</div>
+      <div class="counts">${counts}</div>
+      <div class="kv">
+        <div class="k">CPLP release</div><div>${esc(rel)}</div>
+        <div class="k">Jumbo take</div><div>${h.jumbo_take ?? '—'}</div>
+        <div class="k">AU component</div><div>${au}</div>
+        <div class="k">Download Security</div><div>${dl}</div>
+        <div class="k">Changes vs baseline</div><div>${h.drift ? badge('changed', h.drift + ' since ' + localTime(h.baseline)) : (h.baseline ? badge('ok', 'none') : '—')}</div>
+        <div class="k">Last good poll</div><div>${ago(h.last_good)}</div>
+      </div>
+      ${h.alerts.length ? `<div class="alerts">${h.alerts.map(a => `<div class="al ${a.level}">${esc(a.text)}</div>`).join('')}</div>` : ''}
+      ${h.state === 'error' && h.error ? `<div class="err">${esc(h.error)}</div>` : ''}
+      <div class="card-foot"><span class="sub">${h.last_events ? badge('changed', h.last_events + ' new last poll') : ''}</span>
+        <button onclick="openDrawer('${esc(h.name)}')">Details</button></div>
+    </div>`;
+  }).join('');
+}
+
+function renderMatrix() {
+  const hosts = STATE.hosts;
+  const ids = [...new Set(hosts.flatMap(h => Object.keys(h.patches)))].sort();
+  document.querySelector('#legend').innerHTML = STATUS_ORDER.map(s => `<span title="${esc(STATE.kb.statuses[s]?.text || '')}">${badge(s, s)}</span>`).join('') + '<span>hover a status for its meaning (sk185114)</span>';
+  const t = document.querySelector('#matrix');
+  if (!ids.length) { t.innerHTML = '<tr><td class="empty">No live patches reported yet.</td></tr>'; return; }
+  t.innerHTML = `<thead><tr><th>Patch : process</th>${hosts.map(h => `<th>${esc(h.name)}</th>`).join('')}<th>Covers</th></tr></thead><tbody>` +
+    ids.map(id => {
+      const sks = [...new Set(hosts.flatMap(h => (h.patches[id]?.sks) || []))];
+      return `<tr><td class="rowhead">${esc(id)}</td>` + hosts.map(h => {
+        const p = h.patches[id];
+        if (!p) return `<td class="cell"><span class="sub">—</span></td>`;
+        return `<td class="cell" title="${esc((p.installed ? 'installed ' + p.installed + '  ' : '') + (p.comment || ''))}">${badge(p.status, p.status)}<span class="pids">${esc(p.pids || '')}</span></td>`;
+      }).join('') + `<td class="sub">${skLinks(sks.join(' '))}</td></tr>`;
+    }).join('') + '</tbody>';
+}
+
+function renderCoverage() {
+  const hosts = STATE.hosts, cves = STATE.kb.cves;
+  document.querySelector('#coverage').innerHTML =
+    `<thead><tr><th>CVE</th><th>SK</th><th>CPLP</th>${hosts.map(h => `<th>${esc(h.name)}</th>`).join('')}</tr></thead><tbody>` +
+    cves.map(c => `<tr><td class="rowhead" title="${esc(c.title)}">${esc(c.cve)}<div class="sub" style="white-space:normal;max-width:380px">${esc(c.title)}</div></td>
+      <td class="nowrap"><a href="${SK_URL(c.sk)}" target="_blank" rel="noopener">${esc(c.sk)}</a></td>
+      <td class="nowrap">Patch ${c.patch}<div class="sub">take ${c.first_take}+</div></td>` +
+      hosts.map(h => { const s = h.coverage[c.cve]; return `<td class="cell">${s ? badge(s, COVER_TEXT[s] || s, COVER_TIP[s]) : '<span class="sub">—</span>'}</td>`; }).join('') +
+      '</tr>').join('') + '</tbody>';
+}
+
+function renderFilters() {
+  const hs = document.querySelector('#f-host'), hv = hs.value;
+  hs.innerHTML = '<option value="">All</option>' + STATE.hosts.map(h => `<option ${h.name === hv ? 'selected' : ''}>${esc(h.name)}</option>`).join('');
+}
+
+function renderChanges() {
+  if (!STATE) return;
+  const fh = document.querySelector('#f-host').value, fs = document.querySelector('#f-sev').value;
+  const withBase = document.querySelector('#f-base').checked;
+  const rows = STATE.changes.filter(e => (!fh || e.host === fh) && (withBase || e.change !== 'baseline') &&
+    (!fs || (fs === 'alert' ? e.severity === 'alert' : ['alert', 'warn'].includes(e.severity))));
+  const first = knownKeys === null, keys = new Set(STATE.changes.map(evKey));
+  const tb = document.querySelector('#changes');
+  tb.innerHTML = rows.length ? rows.map(e => `<tr class="${!first && !knownKeys.has(evKey(e)) ? 'fresh' : ''}">
+      <td class="nowrap">${esc(e.ts)}</td><td class="nowrap">${esc(e.host)}</td><td>${e.severity ? badge(e.severity, e.severity) : ''}</td>
+      <td class="nowrap">${esc(e.category)}</td><td>${badge(e.change, e.change)}</td><td class="item">${esc(e.item)}</td>
+      <td class="old">${skLinks(e.old || '')}</td><td class="new">${skLinks(e.new || '')}</td></tr>`).join('')
+    : `<tr><td colspan="8" class="empty">No changes recorded yet. The first successful poll of each machine is its baseline; later polls are compared with the previous one.</td></tr>`;
+  if (!first) newCount += [...keys].filter(k => !knownKeys.has(k)).length;
+  knownKeys = keys;
+}
+
+async function collectNow() {
+  document.querySelector('#btn-collect').disabled = true;
+  await fetch('/api/collect', {method: 'POST'});
+  setTimeout(refresh, 800);
+}
+
+/* ---------- drawer ---------- */
+function openDrawer(name) {
+  openHost = name; activeTab = 'patches';
+  document.querySelector('#overlay').classList.add('open');
+  document.querySelector('#drawer').classList.add('open');
+  document.querySelector('#d-body').innerHTML = '<div class="empty">Loading…</div>';
+  loadHost(name);
+}
+function closeDrawer() {
+  openHost = null;
+  document.querySelector('#overlay').classList.remove('open');
+  document.querySelector('#drawer').classList.remove('open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+async function loadHost(name) {
+  const r = await fetch('/api/host/' + encodeURIComponent(name), {cache: 'no-store'});
+  hostData = await r.json();
+  const g = hostData.last_good, l = hostData.latest;
+  document.querySelector('#d-title').textContent = name;
+  document.querySelector('#d-sub').textContent =
+    `Last good: ${g ? localTime(g.collected_at) : '—'} · Baseline: ${localTime(hostData.baseline_at)}` +
+    (l && !l.ok ? ` · Last poll FAILED: ${l.error}` : '') + (g ? ` · login shell: ${g.login_shell}` : '');
+  renderTabs();
+}
+
+const TABS = [['patches', 'Live patches'], ['drift', 'Changes since baseline'], ['events', 'Host change log'],
+  ['delivery', 'Bundle / AutoUpdater / consent'], ['log', 'Logs'], ['raw', 'Raw output']];
+function renderTabs() {
+  document.querySelector('#d-tabs').innerHTML = TABS.map(([k, t]) =>
+    `<div class="tab ${k === activeTab ? 'active' : ''}" onclick="activeTab='${k}';renderTabs()">${t}</div>`).join('');
+  document.querySelector('#d-body').innerHTML = renderTab(activeTab);
+}
+const sec = n => ((hostData.last_good || {}).sections || {})[n] || {};
+
+function eventTable(evs, withTime) {
+  if (!evs.length) return '<div class="empty">Nothing to show.</div>';
+  return `<div class="table-wrap"><table><thead><tr>${withTime ? '<th>Time</th>' : ''}<th>Sev</th><th>Category</th><th>Change</th><th>Item</th><th>Old</th><th>New</th></tr></thead><tbody>` +
+    evs.map(e => `<tr>${withTime ? `<td class="nowrap">${esc(e.ts)}</td>` : ''}<td>${e.severity ? badge(e.severity, e.severity) : ''}</td><td class="nowrap">${esc(e.category)}</td>
+      <td>${badge(e.change, e.change)}</td><td class="item">${esc(e.item)}</td><td class="old">${skLinks(e.old || '')}</td><td class="new">${skLinks(e.new || '')}</td></tr>`).join('') +
+    '</tbody></table></div>';
+}
+
+function renderTab(t) {
+  if (!hostData.last_good) return '<div class="empty">No successful poll yet for this machine.</div>';
+  if (t === 'patches') {
+    const s = sec('cplp_list'), p = (s.data || {}).patches || {};
+    const ids = Object.keys(p).sort();
+    if (!s.ok) return `<div class="err">cplp list: ${esc(s.error || 'failed')}</div>` + rawBlock('cplp_list');
+    let h = ids.length ? `<div class="table-wrap"><table><thead><tr><th>Patch : process</th><th>Status</th><th>Mode</th><th>PIDS</th><th>Installed</th><th>Comment</th></tr></thead><tbody>` +
+      ids.map(id => `<tr><td class="rowhead">${esc(id)}</td><td>${badge(p[id].status, p[id].status, STATE.kb.statuses[p[id].status]?.text)}</td>
+        <td class="nowrap">${esc(p[id].mode || '')}</td><td class="nowrap">${esc(p[id].pids || '')}</td><td class="nowrap">${esc(p[id].installed || '')}</td>
+        <td class="item">${skLinks(p[id].comment || '')}</td></tr>`).join('') + '</tbody></table></div>'
+      : '<div class="note">cplp list returned no patches.</div>';
+    if ((s.data.unparsed || []).length) h += `<h3>Lines not recognised</h3><pre>${esc(s.data.unparsed.join('\n'))}</pre>`;
+    return h;
+  }
+  if (t === 'drift') return `<div class="note">Everything that differs between the baseline (${esc(localTime(hostData.baseline_at))}) and the latest good poll. Use Re-baseline to start counting from now, e.g. at the start of a class.</div>` + eventTable(hostData.drift, false);
+  if (t === 'events') return eventTable(hostData.events.filter(e => e.change !== 'baseline'), true);
+  if (t === 'delivery') return `<div class="note">CPLP arrives through AutoUpdater (component <b>urgent_security_updates</b>) when the consent flag <b>Download Security</b> is on (sk175504). Manual update: <code>autoupdatercli stop; autoupdatercli update_component urgent_security_updates</code> (sk185114).</div>` +
+    rawBlock('bundles') + rawBlock('au_component') + rawBlock('consent');
+  if (t === 'log') {
+    const files = sec('cplp_logs').data || [];
+    let h = '<h3>CPLP-related log files (newest first)</h3>';
+    h += files.length ? `<div class="table-wrap"><table><thead><tr><th>Modified</th><th>Size</th><th>Path</th></tr></thead><tbody>` +
+      files.map(f => `<tr><td class="nowrap">${esc(f.mtime.replace('T', ' '))}</td><td class="nowrap">${f.size}</td><td class="item">${esc(f.path)}</td></tr>`).join('') + '</tbody></table></div>'
+      : '<div class="note">No CPLP log files found in /var/log, $CPDIR/log, $FWDIR/log or the AutoUpdater folder. CPLP audit logs (Coverage Report / Installed / Applied / Reverted) go to the management server logs - see SmartConsole Logs &amp; Events.</div>';
+    return h + rawBlock('cplp_log_tail') + rawBlock('au_cplp_lines');
+  }
+  if (t === 'raw') return Object.keys(hostData.last_good.sections).map(rawBlock).join('');
+  return '';
+}
+function rawBlock(n) {
+  const s = sec(n), title = hostData.titles[n] || n;
+  if (!s || s.raw === undefined) return `<h3>${esc(title)}</h3><div class="note">Not collected.</div>`;
+  const extra = n === 'cplp_log_tail' && s.data ? ` — ${s.data.path}` : '';
+  return `<h3>${esc(title)}${esc(extra)} ${s.ok ? '' : badge('error', s.error || 'failed')}</h3><pre>${esc(s.raw || '(no output)')}</pre>`;
+}
+
+async function rebaseline() {
+  if (!openHost || !confirm(`Make the latest good snapshot of ${openHost} its new baseline?`)) return;
+  await fetch('/api/rebaseline/' + encodeURIComponent(openHost), {method: 'POST'});
+  lastGen = -1; refresh();
+}
+
+refresh();
+timer = setInterval(refresh, refreshMs);
+setInterval(updateNext, 1000);
+</script>
+</body>
+</html>
