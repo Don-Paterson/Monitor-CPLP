@@ -63,6 +63,18 @@ button:disabled { opacity: .5; cursor: default; }
 .al.warn { background: var(--amber-bg); color: #fcd34d; border-color: var(--amber-b); }
 .err { margin-top: 12px; padding: 8px 10px; border-radius: 4px; background: var(--red-bg); color: #fca5a5;
        border: 1px solid var(--red-b); font-size: 11px; word-break: break-word; }
+.inst { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 50; }
+.inst.open { display: flex; }
+.inst-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; width: min(900px, 94vw);
+  max-height: 86vh; display: flex; flex-direction: column; }
+.inst-head, .inst-foot { padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.inst-head { border-bottom: 1px solid var(--border); } .inst-foot { border-top: 1px solid var(--border); }
+.inst-body { padding: 12px 18px; overflow: auto; font-size: 12px; line-height: 1.5; }
+.inst-body p { margin: 0 0 10px; color: var(--dim); }
+.inst-line { white-space: pre-wrap; word-break: break-word; }
+.inst-line .t { color: var(--label); margin-right: 8px; }
+.inst-line.out { color: #9ca3af; padding-left: 64px; }
+.inst-line.warn { color: #fcd34d; } .inst-line.error { color: #fca5a5; } .inst-line.ok { color: var(--green); }
 .card-foot { margin-top: 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .section-head { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 12px; flex-wrap: wrap; gap: 10px; }
 .section-head h2 { font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--dim); }
@@ -159,6 +171,17 @@ h3 { font-size: 11px; color: var(--label); text-transform: uppercase; letter-spa
   </div>
   <div class="tabs" id="d-tabs"></div>
   <div class="drawer-body" id="d-body"></div>
+</div>
+
+<div class="inst" id="inst">
+  <div class="inst-box">
+    <div class="inst-head"><div><div class="card-title" id="i-title"></div><div class="card-sub" id="i-sub"></div></div>
+      <span id="i-state"></span></div>
+    <div class="inst-body" id="i-body"></div>
+    <div class="inst-foot"><span class="sub" id="i-note"></span>
+      <span style="display:flex; gap:8px;"><button class="primary" id="i-go" onclick="startInstall()">Install / update now</button>
+      <button onclick="closeInstall()">Close</button></span></div>
+  </div>
 </div>
 
 <script>
@@ -260,7 +283,9 @@ function renderHosts() {
       ${h.alerts.length ? `<div class="alerts">${h.alerts.map(a => `<div class="al ${a.level}">${esc(a.text)}</div>`).join('')}</div>` : ''}
       ${h.state === 'error' && h.error ? `<div class="err">${esc(h.error)}</div>` : ''}
       <div class="card-foot"><span class="sub">${h.last_events ? badge('changed', h.last_events + ' new last poll') : ''}</span>
-        <button onclick="openDrawer('${esc(h.name)}')">Details</button></div>
+        <span style="display:flex; gap:8px;">
+          <button onclick="openInstall('${esc(h.name)}')" title="Run the sk185114 update steps on this machine: make sure AutoUpdater knows the CPLP component, then download and install the latest CPLP">${h.take == null ? 'Install CPLP' : 'Update CPLP'}</button>
+          <button onclick="openDrawer('${esc(h.name)}')">Details</button></span></div>
     </div>`;
   }).join('');
 }
@@ -320,6 +345,55 @@ async function collectNow() {
   await fetch('/api/collect', {method: 'POST'});
   setTimeout(refresh, 800);
 }
+
+/* ---------- install / update CPLP ---------- */
+let instHost = null, instTimer = null;
+const INST_INTRO = `<p>Runs the sk185114 steps on this machine in Expert mode:</p>
+  <p>1. Shows the CPLP bundle take installed now (<code>cpinfo -y all | grep URGENT</code>).<br>
+  2. Checks that AutoUpdater knows the CPLP component. If it does not, restarts AutoUpdater
+     (<code>autoupdatercli stop</code>, it starts again by itself) so it reads its current component list.<br>
+  3. Downloads and installs the latest CPLP (<code>autoupdatercli update_component urgent_security_updates</code>).<br>
+  4. Shows the result and starts a new collection.</p>
+  <p>Needs Internet access from the machine and Download Security on (Global Properties &gt; Data Access Control).
+  Running processes are not restarted; CPLP applies its patches live.</p>`;
+
+async function openInstall(name) {
+  instHost = name;
+  document.querySelector('#i-title').textContent = 'CPLP install / update - ' + name;
+  document.querySelector('#i-sub').textContent = (STATE.hosts.find(h => h.name === name) || {}).ip || '';
+  document.querySelector('#inst').classList.add('open');
+  await pollInstall(true);
+}
+function closeInstall() {
+  instHost = null; clearTimeout(instTimer);
+  document.querySelector('#inst').classList.remove('open');
+}
+async function startInstall() {
+  if (!instHost) return;
+  document.querySelector('#i-go').disabled = true;
+  await fetch('/api/install/' + encodeURIComponent(instHost), {method: 'POST'});
+  pollInstall();
+}
+async function pollInstall(first) {
+  clearTimeout(instTimer);
+  if (!instHost) return;
+  const j = await (await fetch('/api/install/' + encodeURIComponent(instHost), {cache: 'no-store'})).json();
+  const running = j.state === 'running';
+  const body = j.state === 'none' ? INST_INTRO : INST_INTRO + j.lines.map(l =>
+    `<div class="inst-line ${esc(l.level)}">${l.level === 'out' ? '' : `<span class="t">${esc(l.t)}</span>`}${esc(l.text)}</div>`).join('');
+  const el = document.querySelector('#i-body');
+  const atEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
+  el.innerHTML = body;
+  if (atEnd || first) el.scrollTop = el.scrollHeight;
+  document.querySelector('#i-state').innerHTML = j.state === 'none' ? '' :
+    badge(running ? 'collecting' : j.state === 'done' ? 'ok' : 'error', running ? 'running' : j.state);
+  document.querySelector('#i-go').disabled = running;
+  document.querySelector('#i-go').textContent = j.state === 'none' ? 'Install / update now' : 'Run again';
+  document.querySelector('#i-note').textContent = running ? 'Working - you can close this window, the job carries on.'
+    : (j.finished ? 'Finished ' + new Date(j.finished * 1000).toLocaleTimeString() : '');
+  if (running) instTimer = setTimeout(pollInstall, 2000);
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeInstall(); });
 
 /* ---------- drawer ---------- */
 function openDrawer(name) {

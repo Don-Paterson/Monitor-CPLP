@@ -49,6 +49,7 @@ $FILES = @(
     "cplpmon/engine.py",
     "cplpmon/labs.py",
     "cplpmon/menu.py",
+    "cplpmon/installer.py",
     "labs.json",
     "cplp_kb.json",
     "static/dashboard.html",

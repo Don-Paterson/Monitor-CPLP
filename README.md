@@ -59,7 +59,21 @@ When Check Point updates sk185114, edit `cplp_kb.json` in the repo (add the new 
   - *not listed*: no `cplp` entry names that SK, which can be normal (for example VPN fixes on a management server, or a fix already in the Jumbo).
   - *no CPLP*.
 - **Change log:** every change, with a severity column. Alerts are reverted patches, a removed CPLP bundle, or `cplp list` starting to fail. Warnings include a take going backwards, consent being turned off, the component being disabled, and partial PIDs. Status improvements (ready → armed, a new patch, a newer take) are marked **ok**.
+- **Install / Update CPLP:** a button on each machine card runs the sk185114 update steps on that machine (see below) and shows the progress live.
 - **Exports:** **Collect now**, **Status CSV** (the patch/CVE × machine matrix, handy for a lab report) and **Changes CSV**. **Re-baseline** is in each machine's panel.
+
+## Installing or updating CPLP from the dashboard
+
+**Install CPLP** (or **Update CPLP** when a bundle is already there) on a machine card runs these steps over SSH in Expert mode, then starts a new collection:
+
+1. `cpinfo -y all | grep URGENT`: the CPLP take installed now.
+2. `autoupdatercli show urgent_security_updates`: does AutoUpdater know the CPLP component? If it answers *Component not found*, the job runs `autoupdatercli stop`. AutoUpdater starts again by itself and reads its current component list.
+3. `autoupdatercli update_component urgent_security_updates`: this only queues the request, so the job polls `autoupdatercli get_status <Id>` (`s_in_queue` … `s_installation_finished`) and shows the AutoUpdater.log lines for the component.
+4. The result: the URGENT take, the installed package and `cplp list`.
+
+It needs Internet access from the machine and Download Security on (Global Properties > Data Access Control, sk175504). Running processes are not restarted: CPLP applies its patches live.
+
+**Why a machine can show "CPLP not available" while others have it.** AutoUpdater reads its component list (`/opt/AutoUpdater/productsConfig/products_config.xml`) only when it starts. On a lab image whose AutoUpdater is older than CPLP, the list without CPLP is loaded at boot, and the new list arrives a few minutes later through the `auto_updaterConf` component. AutoUpdater keeps using the old list until it restarts, so it never offers CPLP. `autoupdatercli show urgent_security_updates` then says *Component not found*. Seen in the CTPS lab (Nov 2026): A-SMS had the 2024 AutoUpdater list and no CPLP, while A-GW's image already had the newer list and installed CPLP on its own. Step 2 above fixes this.
 
 ## Files and logs
 
@@ -88,4 +102,4 @@ C:\Monitor-CPLP\
 
 - `cplp list` parsing follows the format in sk185114 and finds PIDS and INSTALLED by their shape, so missing columns don't break it. The `autoupdatercli show urgent_security_updates` wording is matched loosely (enabled/disabled). If a real lab shows something unexpected, check **Raw output** in the machine's panel.
 - CPLP **audit logs** (Coverage Report / Installed / Applied / Reverted) go to the management server's logs. They are viewed in SmartConsole Logs & Events and are not collected here.
-- The tool never triggers a CPLP update. To force one (sk185114), run `autoupdatercli stop; autoupdatercli update_component urgent_security_updates`, then click **Collect now**.
+- The tool changes nothing on a machine unless you click **Install / Update CPLP**. Polling is read-only.

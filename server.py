@@ -7,6 +7,9 @@ CVE coverage, and the AutoUpdater / consent settings that deliver CPLP.
   python server.py --last              skip the menu, reuse the last lab/machines
   python server.py --lab ccte --hosts A-SMS,A-GW-01
   python server.py --once [...]        one collection, print status + changes, exit
+
+The dashboard's "Install / update CPLP" button runs the sk185114 update steps on
+one machine (see cplpmon/installer.py) and then starts a new collection.
 """
 import io
 import os
@@ -26,6 +29,7 @@ from cplpmon.engine import Monitor            # noqa: E402
 from cplpmon import menu, kb                  # noqa: E402
 from cplpmon.differ import diff_snapshots     # noqa: E402
 from cplpmon.collector import SECTION_TITLES  # noqa: E402
+from cplpmon.installer import Installer       # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
                     datefmt="%H:%M:%S")
@@ -47,7 +51,8 @@ def load_json(name, required=True):
 CONFIG = load_json("config.json")
 CREDS = load_json("credentials.json")
 kb.load(BASE_DIR)
-monitor = None  # created in main() after the lab / machine menu
+monitor = None    # created in main() after the lab / machine menu
+installer = None  # created with the monitor
 
 
 def host_view(h):
@@ -128,6 +133,18 @@ def create_app():
             monitor.generation += 1
         return jsonify({"ok": bool(snap), "baseline": (snap or {}).get("collected_at")})
 
+    @app.route("/api/install/<name>", methods=["GET", "POST"])
+    def api_install(name):
+        from flask import request
+        host = next((h for h in monitor.hosts if h["name"] == name), None)
+        if not host:
+            abort(404)
+        if request.method == "POST":
+            job, started = installer.start(host)
+            return jsonify({"started": started, **job.view()})
+        job = installer.get(name)
+        return jsonify(job.view() if job else {"host": name, "state": "none", "lines": []})
+
     @app.route("/api/changes.csv")
     def api_changes_csv():
         buf = io.StringIO()
@@ -199,10 +216,11 @@ def main():
                 f"{h['name']}={'/'.join(h['ips'])}" for h in lab["hosts"]))
         return
 
-    global monitor
+    global monitor, installer
     lab, hosts = menu.select(BASE_DIR, lab_arg=args.lab, hosts_arg=args.hosts,
                              use_last=args.last, interactive=sys.stdin.isatty())
     monitor = Monitor(CONFIG, CREDS, BASE_DIR, hosts, lab)
+    installer = Installer(CREDS, CONFIG, on_done=monitor.trigger)
 
     if args.once:
         run_once()

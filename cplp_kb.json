@@ -1,13 +1,18 @@
 {
-    "_comment": "CPLP knowledge base from sk185114 (Last Modified 2026-09-29). Update this file when the SK changes - the bootstrap re-downloads it on every run. Takes refer to BUNDLE_URGENT_SECURITY_UPDATE_<ver>_AUTOUPDATE in 'cpinfo -y all'.",
-    "sk_revision": "2026-09-29",
+    "_comment": "CPLP knowledge base from sk185114 (Last Modified 2026-11-10). Update this file when the SK changes - the bootstrap re-downloads it on every run. Takes refer to BUNDLE_URGENT_SECURITY_UPDATE_<ver>_AUTOUPDATE in 'cpinfo -y all'.",
+    "sk_revision": "2026-11-10",
     "latest_take": {
-        "R82.20": 29,
-        "R82.10": 28,
-        "R82": 28,
-        "R81.20": 28
+        "R82.20": 30,
+        "R82.10": 30,
+        "R82": 30,
+        "R81.20": 30
     },
     "releases": [
+        {
+            "patch": 6, "takes": [30], "date": "2026-10-14",
+            "items": [],
+            "notes": ["Enhanced infrastructure capabilities"]
+        },
         {
             "patch": 5, "takes": [28, 29], "date": "2026-09-16",
             "items": [
